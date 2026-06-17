@@ -1,0 +1,90 @@
+/* ── Live PC Health Dashboard — styles ─────────────────────────────────────── */
+
+:root {
+  --bg:        #0f1115;   /* page background          */
+  --panel:     #1a1d24;   /* card background          */
+  --text:      #e6e6e6;   /* main text                */
+  --muted:     #8a8f98;   /* secondary text           */
+  --accent:    #4ade80;   /* green — connected        */
+  --cpu-color: #38bdf8;   /* blue   — CPU line        */
+  --ram-color: #f472b6;   /* pink   — RAM line        */
+  --disk-color:#fbbf24;   /* amber  — Disk line       */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+header h1 { font-size: 1.5rem; font-weight: 600; }
+
+.status { font-size: 0.9rem; font-weight: 600; }
+.status.connected    { color: var(--accent); }
+.status.disconnected { color: var(--muted); }
+/* The ● dot pulses green when connected. */
+.status.connected::after {
+  content: ""; display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+/* ── Cards grid ─────────────────────────────────────────────────────────── */
+main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.card {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.card h2 {
+  font-size: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.big-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.sub-value { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+
+/* Colour each card's big value with its accent. */
+#cpu-value  { color: var(--cpu-color); }
+#ram-value  { color: var(--ram-color); }
+#disk-value { color: var(--disk-color); }
+
+canvas { width: 100% !important; height: 120px !important; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

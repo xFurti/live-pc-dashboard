@@ -1,0 +1,38 @@
+# ──────────────────────────────────────────────────────────────────────────
+# .gitignore — files Git should NOT track
+#
+# IMPORTANT: in a .gitignore file, "#" only starts a comment at the START of
+# a line. There are NO inline comments! Writing `venv/  # comment` makes Git
+# treat the whole line (spaces + text) as a literal pattern. Keep every rule
+# on its own clean line.
+# ──────────────────────────────────────────────────────────────────────────
+
+# --- Python ---
+# Virtual environment: ~hundreds of MB, machine-specific. Never commit this!
+# Other devs recreate it with: python -m venv venv && pip install -r requirements.txt
+venv/
+
+# Compiled bytecode caches (auto-generated)
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# --- Environment / secrets ---
+.env
+.env.local
+*.secret
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+
+# --- Logs ---
+*.log
+logs/

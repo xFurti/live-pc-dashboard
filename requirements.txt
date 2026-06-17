@@ -1,0 +1,8 @@
+# ── Python dependencies for the Live PC Health Dashboard ──────────────────────
+# Install everything with:  pip install -r requirements.txt
+
+psutil==5.9.8            # Read CPU / RAM / Disk stats (Step 1)
+fastapi==0.111.0         # Web framework with native WebSocket support (Step 2)
+uvicorn[standard]==0.30.0  # ASGI server to run FastAPI. The [standard] extra
+                           # pulls in `websockets` + `httptools` for faster,
+                           # production-grade WebSocket handling (Step 2).
