@@ -36,6 +36,29 @@
       <div class="sub-value" id="disk-detail">-- / -- GB</div>
       <canvas id="disk-chart"></canvas>
     </section>
+
+    <!-- Step 4: process monitor — top CPU and top RAM consumers, two live tables. -->
+    <section class="process-panel">
+      <div class="process-table-wrapper">
+        <h3>🔥 Top by CPU</h3>
+        <table class="process-table">
+          <thead>
+            <tr><th>PID</th><th>Name</th><th>CPU%</th><th>RAM%</th></tr>
+          </thead>
+          <tbody id="top-cpu-table"><!-- rows injected by app.js --></tbody>
+        </table>
+      </div>
+
+      <div class="process-table-wrapper">
+        <h3>💾 Top by RAM</h3>
+        <table class="process-table">
+          <thead>
+            <tr><th>PID</th><th>Name</th><th>CPU%</th><th>RAM%</th></tr>
+          </thead>
+          <tbody id="top-memory-table"><!-- rows injected by app.js --></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <footer>

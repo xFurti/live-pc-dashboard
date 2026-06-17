@@ -22,6 +22,10 @@ const diskValueEl = document.getElementById("disk-value");
 const diskDetailEl= document.getElementById("disk-detail");
 const lastUpdateEl= document.getElementById("last-update");
 
+// Process monitor table bodies (Step 4).
+const topCpuEl = document.getElementById("top-cpu-table");
+const topMemEl = document.getElementById("top-memory-table");
+
 // ── Chart factory ───────────────────────────────────────────────────────────
 // All three charts share the same shape: a line that grows from left to right.
 // We pre-fill the labels with empty slots so the chart is a fixed width.
@@ -65,6 +69,30 @@ function pushSample(chart, value) {
   chart.update("none");                              // "none" = skip animation
 }
 
+// ── Helper: rebuild a process table's <tbody> from a list of rows ────────────
+// This is the "live list" rendering pattern, distinct from the rolling-window
+// charts above. Each tick we wipe the tbody and rebuild it from the new array.
+// (For a handful of rows this is cheap and simpler than diffing.)
+function renderProcessTable(tableBodyEl, rows) {
+  // Build all rows as one HTML string, then assign once (fewer DOM touches).
+  const html = rows.map((r) => `
+    <tr>
+      <td>${r.pid}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${r.cpu_percent.toFixed(1)}</td>
+      <td>${r.memory_percent.toFixed(1)}</td>
+    </tr>
+  `).join("");
+  tableBodyEl.innerHTML = html;
+}
+
+// Guard against odd characters in process names (e.g. <, >, &).
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // ── Helper: format "now" as a short HH:MM:SS timestamp ───────────────────────
 function clockNow() {
   return new Date().toLocaleTimeString();
@@ -96,6 +124,10 @@ function connect() {
     pushSample(cpuChart,  d.cpu_percent);
     pushSample(ramChart,  d.ram_percent);
     pushSample(diskChart, d.disk_percent);
+
+    // Rebuild the two process tables (Step 4).
+    renderProcessTable(topCpuEl, d.top_cpu || []);
+    renderProcessTable(topMemEl, d.top_memory || []);
 
     lastUpdateEl.textContent = `updated ${clockNow()}`;
   };

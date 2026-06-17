@@ -81,6 +81,67 @@ main {
 
 canvas { width: 100% !important; height: 120px !important; }
 
+/* ── Process panel (Step 4) ─────────────────────────────────────────────── */
+/* Two tables side by side, spanning the full grid width. */
+.process-panel {
+  grid-column: 1 / -1;          /* span all columns of the cards grid */
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.process-table-wrapper h3 {
+  font-size: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+/* The live process tables. */
+.process-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.process-table th,
+.process-table td {
+  padding: 0.5rem 0.4rem;
+  text-align: left;
+  border-bottom: 1px solid #2a2e37;
+}
+.process-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+/* Right-align numeric columns for a clean "financial table" look. */
+.process-table th:nth-child(1),
+.process-table td:nth-child(1),   /* PID  */
+.process-table th:nth-child(3),
+.process-table td:nth-child(3),   /* CPU% */
+.process-table th:nth-child(4),
+.process-table td:nth-child(4) {  /* RAM% */
+  text-align: right;
+  font-family: "Consolas", "Courier New", monospace;  /* monospace numbers */
+}
+
+/* Subtle hover so the table feels interactive. */
+.process-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+
+/* Make the #1 row stand out. */
+.process-table tbody tr:first-child td { color: var(--text); font-weight: 600; }
+
+/* On narrow screens, stack the two tables vertically. */
+@media (max-width: 640px) {
+  .process-panel { grid-template-columns: 1fr; }
+}
+
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 footer {
   margin-top: 1.5rem;

@@ -31,7 +31,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 # Reuse the exact same functions we wrote in Step 1. No duplication.
-from backend.stats import get_cpu_usage, get_memory_usage, get_disk_usage, _prime_cpu
+from backend.stats import (
+    get_cpu_usage,
+    get_memory_usage,
+    get_disk_usage,
+    get_top_processes,
+    _prime_cpu,
+)
 
 # Prime the CPU reading once at import time (see stats.py for why).
 _prime_cpu()
@@ -88,6 +94,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 **get_cpu_usage(),
                 **get_memory_usage(),
                 **get_disk_usage(),
+                **get_top_processes(limit=5),
                 "timestamp": time_iso(),
             }
             await websocket.send_text(json.dumps(payload))

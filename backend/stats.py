@@ -143,6 +143,87 @@ def _prime_cpu():
 
 
 # -----------------------------------------------------------------------------
+# 5) PROCESSES — top consumers of CPU and RAM
+# -----------------------------------------------------------------------------
+# Module-level cache: keeps psutil.Process objects alive between ticks.
+#
+# WHY WE NEED THIS (the per-process CPU gotcha):
+#   process.cpu_percent(interval=None) works exactly like the global one — it
+#   returns the % change SINCE THE LAST TIME IT WAS CALLED ON THAT SAME OBJECT.
+#   If we create a fresh Process object each tick and immediately read its
+#   cpu_percent(), we ALWAYS get 0.0 (no previous sample to compare against).
+#
+#   By storing the Process object in _process_cache (keyed by pid) and reusing
+#   it next tick, the second call onwards gives a real delta. Pids that have
+#   died are pruned so the cache doesn't grow forever.
+_process_cache = {}  # { pid: psutil.Process }
+
+
+def get_top_processes(limit=5):
+    """
+    Returns the top `limit` processes by CPU usage and by RAM usage.
+
+    Walks every running process via psutil.process_iter(), reads its name,
+    CPU% and memory%, sorts, and returns the top N of each.
+
+    Returns a dict (matches our flat-dict convention, just nested by list):
+        {
+          "top_cpu": [
+              {"pid": 1234, "name": "chrome.exe", "cpu_percent": 23.1, "memory_percent": 4.5},
+              ...
+          ],
+          "top_memory": [ ... same shape, sorted by memory_percent ... ],
+        }
+
+    Notes:
+      - Windows system processes (e.g. "System", "Idle") raise AccessDenied
+        when you read their name or stats. We catch and skip them.
+      - Zombie/exited processes raise NoSuchProcess — also skipped.
+      - CPU% can exceed 100 on multi-core machines (100% = one full core).
+    """
+    # Refresh the set of live pids so we can prune dead ones from the cache.
+    live_pids = set()
+    rows = []
+
+    for proc in psutil.process_iter(["pid", "name"]):
+        try:
+            pid = proc.info["pid"]
+            name = proc.info["name"] or "unknown"
+            live_pids.add(pid)
+
+            # Reuse the cached Process object if we have one (so cpu_percent
+            # can compute a real delta), otherwise adopt this one.
+            cached = _process_cache.get(pid)
+            if cached is None:
+                _process_cache[pid] = proc
+                cached = proc
+
+            cpu_percent = cached.cpu_percent(interval=None)
+            memory_percent = cached.memory_percent()
+
+            rows.append({
+                "pid": pid,
+                "name": name,
+                "cpu_percent": round(cpu_percent, 1),
+                "memory_percent": round(memory_percent, 1),
+            })
+
+        except (psutil.AccessDenied, psutil.NoSuchProcess):
+            # System/protected process or it died mid-iteration. Just skip.
+            continue
+
+    # Prune dead processes from the cache so it doesn't grow unbounded.
+    for dead_pid in [p for p in _process_cache if p not in live_pids]:
+        del _process_cache[dead_pid]
+
+    # Sort and slice. If we have fewer than `limit` rows, that's fine.
+    top_cpu = sorted(rows, key=lambda r: r["cpu_percent"], reverse=True)[:limit]
+    top_memory = sorted(rows, key=lambda r: r["memory_percent"], reverse=True)[:limit]
+
+    return {"top_cpu": top_cpu, "top_memory": top_memory}
+
+
+# -----------------------------------------------------------------------------
 # Entry point — this runs only when we execute the file directly:
 #   python backend/stats.py
 # -----------------------------------------------------------------------------
