@@ -1,151 +1,332 @@
-/* ── Live PC Health Dashboard — styles ─────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   LIVE PC HEALTH · MISSION CONTROL
+   ────────────────────────────────────────────────────────────────────────────
+   Design system:
+     1. Animated gradient mesh background (body::before / body::after)
+     2. Glassmorphism panels (.glass)
+     3. Radial SVG gauges (.gauge) with neon glow + threshold colors
+     4. Premium typography (Space Grotesk + JetBrains Mono)
+     5. Neon process bars in the table
+   ════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg:        #0f1115;   /* page background          */
-  --panel:     #1a1d24;   /* card background          */
-  --text:      #e6e6e6;   /* main text                */
-  --muted:     #8a8f98;   /* secondary text           */
-  --accent:    #4ade80;   /* green — connected        */
-  --cpu-color: #38bdf8;   /* blue   — CPU line        */
-  --ram-color: #f472b6;   /* pink   — RAM line        */
-  --disk-color:#fbbf24;   /* amber  — Disk line       */
+  /* ── Base surfaces ─────────────────────────────────────────────────────── */
+  --bg:           #07090f;   /* near-black page base                       */
+  --glass-fill:   rgba(20, 26, 40, 0.55);   /* frosted panel fill         */
+  --glass-border: rgba(140, 170, 255, 0.14);/* subtle light edge          */
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --text:         #e8edf7;
+  --muted:        #7b859c;
+
+  /* ── Threshold colors (applied to gauges + numbers by JS) ──────────────── */
+  --low:          #34d399;   /* green  — under 60%                         */
+  --mid:          #fbbf24;   /* amber  — 60% to 85%                        */
+  --high:         #f43f5e;   /* red    — over 85%                          */
+  --accent:       #38bdf8;   /* cyan   — connected / brand                 */
+
+  /* ── Per-metric brand colors (sparklines) ──────────────────────────────── */
+  --cpu-color:    #38bdf8;   /* cyan                                       */
+  --ram-color:    #a78bfa;   /* violet                                     */
+  --disk-color:   #34d399;   /* emerald                                    */
+
+  /* ── Misc tokens ───────────────────────────────────────────────────────── */
+  --radius:       20px;
+  --shadow-soft:  0 8px 32px rgba(0, 0, 0, 0.45);
+  --glow-cyan:    0 0 24px rgba(56, 189, 248, 0.35);
+  --grid-line:    rgba(140, 170, 255, 0.08);
 }
 
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { min-height: 100vh; }
+
 body {
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  padding: 2rem;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-header {
+/* ────────────────────────────────────────────────────────────────────────────
+   1. ANIMATED GRADIENT MESH BACKGROUND
+   Two large soft blobs that drift slowly, giving the page depth.
+   ──────────────────────────────────────────────────────────────────────────── */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+body::before {
+  width: 55vw; height: 55vw;
+  top: -15vw; left: -10vw;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.55), transparent 65%);
+  animation: drift1 22s ease-in-out infinite alternate;
+}
+body::after {
+  width: 50vw; height: 50vw;
+  bottom: -15vw; right: -10vw;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.5), transparent 65%);
+  animation: drift2 26s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(8vw, 6vw) scale(1.15); }
+}
+@keyframes drift2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-8vw, -5vw) scale(1.2); }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   2. GLASSMORPHISM PANEL BASE
+   backdrop-filter blurs whatever drifts behind it → the "frosted glass" look.
+   ──────────────────────────────────────────────────────────────────────────── */
+.glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%); /* Safari */
+  box-shadow: var(--shadow-soft);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   3. TOPBAR / HEADER
+   ──────────────────────────────────────────────────────────────────────────── */
+.topbar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 2rem;
 }
-header h1 { font-size: 1.5rem; font-weight: 600; }
+.title-wrap { display: flex; flex-direction: column; gap: 0.15rem; }
+.title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  /* Gradient text: cyan → violet */
+  background: linear-gradient(90deg, #67e8f9, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.subtitle {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  color: var(--muted);
+}
 
-.status { font-size: 0.9rem; font-weight: 600; }
-.status.connected    { color: var(--accent); }
+.status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+}
+.status.connected {
+  color: var(--accent);
+  background: rgba(56, 189, 248, 0.1);
+  box-shadow: var(--glow-cyan);
+  animation: livePulse 1.6s ease-in-out infinite;
+}
 .status.disconnected { color: var(--muted); }
-/* The ● dot pulses green when connected. */
-.status.connected::after {
-  content: ""; display: inline-block;
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+  50%      { box-shadow: 0 0 28px rgba(56, 189, 248, 0.6); }
 }
 
-/* ── Cards grid ─────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────────────────
+   4. MAIN GRID + CARDS
+   ──────────────────────────────────────────────────────────────────────────── */
 main {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   flex: 1;
 }
 
 .card {
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 1.5rem 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
-.card h2 {
-  font-size: 1rem;
+.card-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
+  align-self: flex-start;
 }
 
+/* ── The gauge + centered readout ─────────────────────────────────────────── */
+.gauge-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: grid;
+  place-items: center;
+}
+.gauge { width: 100%; height: 100%; transform: rotate(135deg); /* start bottom-left */ }
+
+.gauge-bg {
+  fill: none;
+  stroke: rgba(140, 170, 255, 0.08);
+  stroke-width: 9;
+}
+.gauge-fill {
+  fill: none;
+  stroke: var(--low);                 /* default; JS toggles .mid/.high */
+  stroke-width: 9;
+  stroke-linecap: round;
+  /* stroke-dasharray + dashoffset are set by JS (setGauge).
+     These CSS transitions make the needle sweep smoothly. */
+  transition: stroke-dashoffset 0.5s ease, stroke 0.4s ease;
+  filter: drop-shadow(0 0 6px currentColor);  /* neon glow on the arc */
+}
+.gauge-fill.mid  { stroke: var(--mid); }
+.gauge-fill.high { stroke: var(--high); }
+
+.gauge-readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 .big-value {
-  font-size: 2.5rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 2.3rem;
   font-weight: 700;
-  margin-bottom: 0.25rem;
+  color: var(--text);
+  transition: color 0.4s ease;
 }
-.sub-value { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+.card[data-metric="cpu"]  .big-value { color: var(--cpu-color); }
+.card[data-metric="ram"]  .big-value { color: var(--ram-color); }
+.card[data-metric="disk"] .big-value { color: var(--disk-color); }
+/* Threshold overrides (applied by JS: .card.low/.mid/.high) */
+.card.high .big-value { color: var(--high); }
+.card.mid  .big-value { color: var(--mid);  }
 
-/* Colour each card's big value with its accent. */
-#cpu-value  { color: var(--cpu-color); }
-#ram-value  { color: var(--ram-color); }
-#disk-value { color: var(--disk-color); }
+.gauge-caption {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+.sub-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
 
-canvas { width: 100% !important; height: 120px !important; }
+/* ── Sparkline beneath each gauge ─────────────────────────────────────────── */
+.sparkline { width: 100% !important; height: 50px !important; margin-top: 0.5rem; }
 
-/* ── Process panel (Step 4) ─────────────────────────────────────────────── */
-/* Two tables side by side, spanning the full grid width. */
+/* ────────────────────────────────────────────────────────────────────────────
+   5. PROCESS PANEL + TABLE
+   ──────────────────────────────────────────────────────────────────────────── */
 .process-panel {
-  grid-column: 1 / -1;          /* span all columns of the cards grid */
-  background: var(--panel);
-  border-radius: 12px;
+  grid-column: 1 / -1;            /* span all three columns */
   padding: 1.5rem;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  gap: 2rem;
 }
-.process-table-wrapper h3 {
-  font-size: 1rem;
+.panel-h3 {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-/* The live process tables. */
 .process-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 .process-table th,
 .process-table td {
-  padding: 0.5rem 0.4rem;
-  text-align: left;
-  border-bottom: 1px solid #2a2e37;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--grid-line);
 }
 .process-table th {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   color: var(--muted);
-  font-weight: 600;
-  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-align: left;
 }
-/* Right-align numeric columns for a clean "financial table" look. */
-.process-table th:nth-child(1),
-.process-table td:nth-child(1),   /* PID  */
-.process-table th:nth-child(3),
-.process-table td:nth-child(3),   /* CPU% */
-.process-table th:nth-child(4),
-.process-table td:nth-child(4) {  /* RAM% */
+.process-table th.num,
+.process-table td.num {
   text-align: right;
-  font-family: "Consolas", "Courier New", monospace;  /* monospace numbers */
+  font-family: "JetBrains Mono", monospace;
+}
+.process-table tbody tr { transition: background 0.2s ease; }
+.process-table tbody tr:hover { background: rgba(140, 170, 255, 0.06); }
+
+/* Name cell carries the neon bar as a background fill. */
+.proc-name-cell { position: relative; }
+.proc-bar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.28), rgba(56, 189, 248, 0.04));
+  border-right: 1px solid rgba(56, 189, 248, 0.4);
+  z-index: 0;
+  transition: width 0.5s ease;
+}
+.proc-name-cell span { position: relative; z-index: 1; }
+
+/* #1 row gets a glow + bolder text. */
+.process-table tbody tr:first-child .big-num {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
 }
 
-/* Subtle hover so the table feels interactive. */
-.process-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
-
-/* Make the #1 row stand out. */
-.process-table tbody tr:first-child td { color: var(--text); font-weight: 600; }
-
-/* On narrow screens, stack the two tables vertically. */
-@media (max-width: 640px) {
-  .process-panel { grid-template-columns: 1fr; }
-}
-
-/* ── Footer ─────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────────────────
+   6. FOOTER
+   ──────────────────────────────────────────────────────────────────────────── */
 footer {
   margin-top: 1.5rem;
   text-align: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
   color: var(--muted);
-  font-size: 0.85rem;
+}
+#last-update { color: var(--accent); }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   7. RESPONSIVE — stack on narrow screens
+   ──────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; }
+  .process-panel { grid-template-columns: 1fr; }
+  .topbar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
 }

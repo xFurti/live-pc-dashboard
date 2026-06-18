@@ -3,57 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live PC Health Dashboard</title>
+  <title>Live PC Health · Mission Control</title>
+
+  <!-- Premium typography: Space Grotesk (headings) + JetBrains Mono (numbers).
+       Fallbacks mean it still works offline if the CDN is unreachable. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
   <link rel="stylesheet" href="/style.css" />
-  <!-- Chart.js: a charting library loaded from a CDN.
-       In a production app you'd self-host it, but a CDN is fine for a portfolio demo. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>🖥️ Live PC Health Dashboard</h1>
+
+  <header class="topbar">
+    <div class="title-wrap">
+      <h1 class="title">LIVE PC HEALTH</h1>
+      <span class="subtitle">REAL-TIME SYSTEM TELEMETRY</span>
+    </div>
     <span id="status" class="status disconnected">● Disconnected</span>
   </header>
 
   <main>
-    <!-- Each "card" shows a live percentage and a chart of the last N samples. -->
-    <section class="card">
-      <h2>CPU</h2>
-      <div class="big-value" id="cpu-value">--%</div>
-      <canvas id="cpu-chart"></canvas>
+    <!-- ─── CPU gauge card ───────────────────────────────────────── -->
+    <section class="card glass" data-metric="cpu">
+      <h2 class="card-label">CPU</h2>
+      <div class="gauge-wrap">
+        <!-- SVG radial gauge: a background "track" circle and a colored
+             "fill" circle that we animate via stroke-dashoffset in JS. -->
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-bg"  cx="60" cy="60" r="52" />
+          <circle class="gauge-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="gauge-readout">
+          <div class="big-value" id="cpu-value">--%</div>
+          <div class="gauge-caption">UTILIZATION</div>
+        </div>
+      </div>
+      <canvas id="cpu-chart" class="sparkline"></canvas>
     </section>
 
-    <section class="card">
-      <h2>RAM</h2>
-      <div class="big-value" id="ram-value">--%</div>
-      <div class="sub-value" id="ram-detail">-- / -- GB</div>
-      <canvas id="ram-chart"></canvas>
+    <!-- ─── RAM gauge card ───────────────────────────────────────── -->
+    <section class="card glass" data-metric="ram">
+      <h2 class="card-label">MEMORY</h2>
+      <div class="gauge-wrap">
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-bg"  cx="60" cy="60" r="52" />
+          <circle class="gauge-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="gauge-readout">
+          <div class="big-value" id="ram-value">--%</div>
+          <div class="sub-value" id="ram-detail">-- / -- GB</div>
+        </div>
+      </div>
+      <canvas id="ram-chart" class="sparkline"></canvas>
     </section>
 
-    <section class="card">
-      <h2>Disk</h2>
-      <div class="big-value" id="disk-value">--%</div>
-      <div class="sub-value" id="disk-detail">-- / -- GB</div>
-      <canvas id="disk-chart"></canvas>
+    <!-- ─── Disk gauge card ──────────────────────────────────────── -->
+    <section class="card glass" data-metric="disk">
+      <h2 class="card-label">DISK</h2>
+      <div class="gauge-wrap">
+        <svg class="gauge" viewBox="0 0 120 120">
+          <circle class="gauge-bg"  cx="60" cy="60" r="52" />
+          <circle class="gauge-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="gauge-readout">
+          <div class="big-value" id="disk-value">--%</div>
+          <div class="sub-value" id="disk-detail">-- / -- GB</div>
+        </div>
+      </div>
+      <canvas id="disk-chart" class="sparkline"></canvas>
     </section>
 
-    <!-- Step 4: process monitor — top CPU and top RAM consumers, two live tables. -->
-    <section class="process-panel">
+    <!-- ─── Process panel (top CPU + top RAM) ────────────────────── -->
+    <section class="process-panel glass">
       <div class="process-table-wrapper">
-        <h3>🔥 Top by CPU</h3>
+        <h3 class="panel-h3">🔥 Top by CPU</h3>
         <table class="process-table">
           <thead>
-            <tr><th>PID</th><th>Name</th><th>CPU%</th><th>RAM%</th></tr>
+            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM%</th></tr>
           </thead>
           <tbody id="top-cpu-table"><!-- rows injected by app.js --></tbody>
         </table>
       </div>
 
       <div class="process-table-wrapper">
-        <h3>💾 Top by RAM</h3>
+        <h3 class="panel-h3">💾 Top by RAM</h3>
         <table class="process-table">
           <thead>
-            <tr><th>PID</th><th>Name</th><th>CPU%</th><th>RAM%</th></tr>
+            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM%</th></tr>
           </thead>
           <tbody id="top-memory-table"><!-- rows injected by app.js --></tbody>
         </table>
@@ -62,10 +100,9 @@
   </main>
 
   <footer>
-    <p>Step 3 · WebSocket + Chart.js · <span id="last-update">never</span></p>
+    <p>Mission Control · WebSocket stream · last sync <span id="last-update">never</span></p>
   </footer>
 
-  <!-- Our app logic: open the WebSocket, update the DOM, push samples into the charts. -->
   <script src="/app.js"></script>
 </body>
 </html>
