@@ -27,6 +27,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+# 'nul' is a reserved device name on Windows. A stray empty file named 'nul'
+# can appear (e.g. from a shell misinterpreting a '2>nul' redirect) and Git
+# cannot index it. Ignore it so `git add .` never fails on it.
+nul
 
 # --- Editors / IDEs ---
 .vscode/
