@@ -1,43 +1,91 @@
-# Live PC Health Dashboard
+<div align="center">
 
-A real-time dashboard that shows CPU, RAM, and Disk usage of your local machine,
-streamed from a Python backend to a browser frontend over WebSockets.
+![Live PC Health Dashboard](docs/images/hero-banner.png)
 
-> 🏗️ **Status: Step 3 of N** — full dashboard with live Chart.js graphs.
-> Possible next steps: Dockerize, deploy, add more metrics (network, GPU, temps).
+<p>
+  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.111.0-009688.svg" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/WebSockets-Realtime-orange.svg" alt="WebSockets" />
+  <img src="https://img.shields.io/badge/Frontend-Vanilla_JS-f7df1e.svg" alt="Vanilla JS" />
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
+</p>
+
+<strong>A real-time telemetry dashboard that streams CPU, RAM, Disk, and Process stats from a Python backend to a glassmorphic browser UI over WebSockets.</strong><br/>
+
+
+</div>
 
 ---
 
-## Tech Stack
-- **Backend:** Python + FastAPI + `psutil`
-- **Realtime:** WebSockets
-- **Frontend:** HTML / CSS / Vanilla JS + Chart.js
+## 🖥️ Preview
+
+<div align="center">
+
+![Dashboard Preview](docs/images/dashboard-preview.png)
+
+</div>
 
 ---
 
-## Project Structure
-```
+## ✨ Why Live PC Health
+
+| Feature | Description |
+|---------|-------------|
+| ⚡ **Real-Time Streaming** | 1-second interval updates powered by FastAPI WebSockets. |
+| 🎛️ **SVG Radial Gauges** | Custom-built speedometer arcs for CPU, Memory, and Disk utilization. |
+| 📈 **Live Sparklines** | Rolling-window line charts via `Chart.js` for historical trend visualization. |
+| 🔥 **Top Processes** | Dynamic tables of the top CPU and RAM consumers, with inline neon progress bars. |
+| 🔄 **Auto-Reconnect** | Seamless frontend reconnection logic if the backend server restarts. |
+| 🌐 **Cross-Platform** | Built on `psutil`, supporting Windows, macOS, and Linux out of the box. |
+
+The interface adopts a premium **"Mission Control"** aesthetic: an animated gradient mesh background, glassmorphism panels, and neon threshold colors that shift from **green** to **amber** to **red** as utilization climbs.
+
+---
+
+## 🏗️ Architecture
+
+The project is split into a Python data-gathering backend and a static HTML/JS frontend, connected by a live WebSocket stream.
+
+
+### How the data flows
+
+1. The **browser** loads the dashboard via HTTP (`GET /`).
+2. `app.js` opens a **WebSocket** connection to `/ws`.
+3. Every second, `stats.py` reads live metrics from the **operating system** through `psutil`.
+4. The **FastAPI** server merges the data into a single payload and pushes it over the socket.
+5. The **UI** parses the JSON, animating the gauges, updating the sparklines, and re-rendering the process tables.
+
+---
+
+## 📂 Project Structure
+
+```text
 live-pc-dashboard/
 ├── backend/
-│   ├── stats.py          # Step 1: psutil metrics reader
-│   └── main.py           # Step 2+3: FastAPI app + WebSocket + static files
+│   ├── stats.py          # psutil metrics reader (CPU, RAM, Disk, Processes)
+│   └── main.py           # FastAPI app + WebSocket endpoint + static file server
 ├── frontend/
-│   ├── index.html        # Step 3: dashboard page
-│   ├── style.css         # Step 3: dark dashboard theme
-│   └── app.js            # Step 3: WebSocket client + Chart.js
+│   ├── index.html        # Dashboard layout and SVG gauges
+│   ├── style.css         # Dark theme, glassmorphism, and animations
+│   └── app.js            # WebSocket client, Chart.js logic, and DOM updates
+├── docs/                 # Documentation assets
 ├── requirements.txt      # Python dependencies
-└── README.md
+└── README.md             # This file
 ```
 
 ---
 
-## Getting Started (Step 1)
+## 🚀 Getting Started
 
-### 1. Create and activate a virtual environment
-A virtual environment keeps this project's packages isolated from the rest
-of your system.
+### 1. Prerequisites
 
-**Windows (cmd):**
+Ensure you have **Python 3.10+** installed on your system.
+
+### 2. Set up a virtual environment
+
+It is recommended to run the project inside an isolated virtual environment.
+
+**Windows (cmd / PowerShell):**
 ```bat
 cd live-pc-dashboard
 python -m venv venv
@@ -51,109 +99,48 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-You should now see `(venv)` at the start of your terminal prompt.
-
-### 2. Install the dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Run the stats reader
-```bash
-python backend/stats.py
-```
-
-You should see a new line printed every 2 seconds, like:
-```
-CPU:  12.3%  |  RAM:  54.0% (8.64 / 16.0 GB)  |  Disk:  62.1% (313.5 / 502.3 GB)
-```
-
-Press **Ctrl+C** to stop.
-
----
-
-## Step 2 — FastAPI + WebSockets
-
-If you upgraded `requirements.txt` (added `uvicorn[standard]`), reinstall:
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Important:** run the server from the **project root** (the folder that
-contains `backend/`), not from inside `backend/`. That way the import
-`from backend.stats import ...` resolves correctly.
+### 4. Run the server
 
-Start the server (with auto-reload on file changes):
+Start the backend from the **project root** so module imports and static files resolve correctly.
 
 ```bash
-# from the live-pc-dashboard/ folder
 uvicorn backend.main:app --reload
 ```
 
-You should see something like:
-```
+You should see:
+```text
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Application startup complete.
 ```
 
-Open **http://127.0.0.1:8000** in your browser. You'll see a tiny test page that
-connects to the `/ws` WebSocket and prints each incoming sample. Open the
-browser console (**F12 → Console**) to inspect the raw JSON messages, which look
-like:
+### 5. Launch 
 
-```json
-{
-  "cpu_percent": 9.4,
-  "ram_total_gb": 16.0,
-  "ram_used_gb": 8.61,
-  "ram_percent": 53.8,
-  "disk_total_gb": 502.3,
-  "disk_used_gb": 313.5,
-  "disk_free_gb": 188.8,
-  "disk_percent": 62.1,
-  "timestamp": "2026-06-17T14:30:21"
-}
-```
-
-Press **Ctrl+C** in the terminal to stop the server.
-
-### Useful FastAPI extras
-- **Interactive API docs:** visit http://127.0.0.1:8000/docs (auto-generated).
-- **ReDoc docs:** http://127.0.0.1:8000/redoc.
+Open your browser and navigate to 👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
 
 ---
 
-## Step 3 — Browser dashboard with Chart.js
+## 🛠️ Tech Stack
 
-Nothing new to install — the backend already serves the frontend files and
-Chart.js is loaded from a CDN. Just restart the server:
-
-```bash
-# from the live-pc-dashboard/ folder
-uvicorn backend.main:app --reload
-```
-
-Open **http://127.0.0.1:8000**. You should now see:
-
-- A dark dashboard with three cards: **CPU**, **RAM**, **Disk**.
-- The big percentage in each card updating every second.
-- Three live line charts (blue/pink/amber) that scroll right-to-left like a
-  heart-rate monitor, showing the last 30 samples.
-- A green **● Connected** badge in the top-right (pulses while live).
-- If you stop the server, the badge turns grey and the page auto-reconnects
-  after 2 seconds.
-
-### Try it
-- Open the dashboard, then run something heavy (a build, a video render,
-  lots of browser tabs) and watch the CPU/RAM lines spike.
-- Open the page in **two tabs at once** — both get independent live streams
-  (each WebSocket connection is its own call to `websocket_endpoint`).
-
+- **Backend:** [Python](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [psutil](https://psutil.readthedocs.io/en/latest/)
+- **Server:** [Uvicorn](https://www.uvicorn.org/) (ASGI)
+- **Frontend:** HTML5, CSS3 (CSS variables, Flexbox/Grid), Vanilla JavaScript
+- **Charting:** [Chart.js](https://www.chartjs.org/)
 ---
 
-## Next Steps
-- **Dockerize** the app for portable deployment.
-- **Deploy** behind a reverse proxy (nginx/Caddy) for a live portfolio demo.
-- **Add metrics**: network throughput, per-core CPU, GPU, temperatures.
-- **Polish**: thresholds + color changes (e.g. red when CPU > 90%).
+## 📄 License
+
+This project is open-source and available under the **MIT License**.
+
+## 🌱 A Note from the Author
+
+This is one of my **first projects**. I'm still learning, so the code
+may not always follow best practices.
+
+If you spot a bug, a mistake, or something that could be done better, please
+**open an issue** or leave a comment — any feedback is genuinely appreciated
+and helps me grow as a developer. Thank you for checking it out! 🙏
