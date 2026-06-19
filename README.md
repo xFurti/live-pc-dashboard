@@ -92,7 +92,7 @@ From the project root:
 |----------|---------|
 | **Windows (cmd)** | `start.bat` |
 | **Windows (PowerShell)** | `.\start.ps1` |
-| **macOS / Linux** | `chmod +x start.sh` once, then `./start.sh` |
+| **macOS / Linux** | `chmod +x start.sh` once, then `./start.sh` (or `bash start.sh`) |
 
 Each script creates a `venv` if needed, installs dependencies, and starts the server at **http://127.0.0.1:8000**. Open that URL in your browser.
 
