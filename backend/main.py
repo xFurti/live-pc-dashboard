@@ -32,15 +32,17 @@ from fastapi.staticfiles import StaticFiles
 
 # Reuse the exact same functions we wrote in Step 1. No duplication.
 from backend.stats import (
-    get_cpu_usage,
-    get_memory_usage,
-    get_disk_usage,
-    get_top_processes,
+    FAST_TICK_SEC,
+    FULL_SCAN_EVERY_N,
+    collect_fast_snapshot,
+    collect_full_snapshot,
     _prime_cpu,
+    _prime_process_cpu,
 )
 
-# Prime the CPU reading once at import time (see stats.py for why).
+# Prime CPU baselines once at import time (see stats.py for why).
 _prime_cpu()
+_prime_process_cpu()
 
 # Create the FastAPI application instance.
 app = FastAPI(title="Live PC Health Dashboard")
@@ -79,26 +81,30 @@ async def websocket_endpoint(websocket: WebSocket):
 
     Flow:
       1. `await websocket.accept()` completes the WebSocket handshake.
-      2. We enter an infinite loop that:
-           - gathers the three stats,
-           - merges them into one dict,
-           - serializes to JSON and sends it,
-           - sleeps 1 second (without blocking the server!).
+      2. Tiered loop (asyncio.to_thread keeps the event loop free):
+           - fast ticks (~400ms): RAM, disks, interval=None CPU + cached processes
+           - full ticks (~every 2s): blocking 1s CPU + process scan + disk enum
+         JSON shape is unchanged; optional `tick` field is "fast" | "full".
       3. If the client disconnects, WebSocketDisconnect is raised and we
          break out cleanly.
     """
     await websocket.accept()
     try:
+        # Prime caches so the first fast ticks already have process/disk data.
+        payload = await asyncio.to_thread(collect_full_snapshot, 5)
+        payload["timestamp"] = time_iso()
+        await websocket.send_text(json.dumps(payload))
+
+        tick = 0
         while True:
-            payload = {
-                **get_cpu_usage(),
-                **get_memory_usage(),
-                **get_disk_usage(),
-                **get_top_processes(limit=5),
-                "timestamp": time_iso(),
-            }
+            tick += 1
+            if tick % FULL_SCAN_EVERY_N == 0:
+                payload = await asyncio.to_thread(collect_full_snapshot, 5)
+            else:
+                payload = await asyncio.to_thread(collect_fast_snapshot)
+            payload["timestamp"] = time_iso()
             await websocket.send_text(json.dumps(payload))
-            await asyncio.sleep(1)
+            await asyncio.sleep(FAST_TICK_SEC)
     except WebSocketDisconnect:
         pass
 
