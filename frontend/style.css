@@ -25,10 +25,10 @@
   --high:         #f43f5e;   /* red    — over 85%                          */
   --accent:       #38bdf8;   /* cyan   — connected / brand                 */
 
-  /* ── Per-metric brand colors (sparklines) ──────────────────────────────── */
-  --cpu-color:    #38bdf8;   /* cyan                                       */
+  /* ── Per-metric brand colors (gauges, values, sparklines) ─────────────── */
+  --cpu-color:    #7dd3fc;   /* light blue                                 */
   --ram-color:    #a78bfa;   /* violet                                     */
-  --disk-color:   #34d399;   /* emerald                                    */
+  --disk-color:   #4ade80;   /* green                                      */
 
   /* ── Misc tokens ───────────────────────────────────────────────────────── */
   --radius:       20px;
@@ -192,7 +192,7 @@ main {
   letter-spacing: 0.05em;
   color: var(--text);
   background-color: rgba(12, 18, 30, 0.72);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2334d399' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%234ade80' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.55rem center;
   background-size: 0.65rem;
@@ -217,16 +217,16 @@ main {
     background-color 0.2s ease;
 }
 .disk-select:hover {
-  border-color: rgba(52, 211, 153, 0.35);
+  border-color: rgba(74, 222, 128, 0.35);
   background-color: rgba(16, 24, 38, 0.88);
 }
 .disk-select:focus,
 .disk-select:focus-visible {
   outline: none;
-  border-color: rgba(52, 211, 153, 0.55);
+  border-color: rgba(74, 222, 128, 0.55);
   box-shadow:
-    0 0 0 2px rgba(52, 211, 153, 0.18),
-    0 0 16px rgba(52, 211, 153, 0.12);
+    0 0 0 2px rgba(74, 222, 128, 0.18),
+    0 0 16px rgba(74, 222, 128, 0.12);
 }
 .disk-select option {
   background: #141a28;
@@ -250,16 +250,14 @@ main {
 }
 .gauge-fill {
   fill: none;
-  stroke: var(--low);                 /* default; JS toggles .mid/.high */
   stroke-width: 9;
   stroke-linecap: round;
-  /* stroke-dasharray + dashoffset are set by JS (setGauge).
-     Short transition as fallback; primary smoothness comes from rAF lerp. */
-  transition: stroke-dashoffset 0.12s linear, stroke 0.3s ease;
-  filter: drop-shadow(0 0 6px currentColor);  /* neon glow on the arc */
+  transition: stroke-dashoffset 0.12s linear;
+  filter: drop-shadow(0 0 6px currentColor);
 }
-.gauge-fill.mid  { stroke: var(--mid); }
-.gauge-fill.high { stroke: var(--high); }
+.card[data-metric="cpu"]  .gauge-fill { stroke: var(--cpu-color); }
+.card[data-metric="ram"]  .gauge-fill { stroke: var(--ram-color); }
+.card[data-metric="disk"] .gauge-fill { stroke: var(--disk-color); }
 
 .gauge-readout {
   position: absolute;
@@ -280,9 +278,6 @@ main {
 .card[data-metric="cpu"]  .big-value { color: var(--cpu-color); }
 .card[data-metric="ram"]  .big-value { color: var(--ram-color); }
 .card[data-metric="disk"] .big-value { color: var(--disk-color); }
-/* Threshold overrides (applied by JS: .card.low/.mid/.high) */
-.card.high .big-value { color: var(--high); }
-.card.mid  .big-value { color: var(--mid);  }
 
 .gauge-caption {
   font-family: "JetBrains Mono", monospace;

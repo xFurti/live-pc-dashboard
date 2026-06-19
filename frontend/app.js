@@ -54,16 +54,10 @@ const metrics = {
   disk: { display: 0, target: 0 },
 };
 
-function setGauge(cardEl, fillCircleEl, percent) {
+function setGauge(fillCircleEl, percent) {
   const clamped = Math.max(0, Math.min(100, percent));
   const offset = GAUGE_ARC * (1 - clamped / 100);
   fillCircleEl.setAttribute("stroke-dashoffset", offset);
-
-  fillCircleEl.classList.remove("low", "mid", "high");
-  cardEl.classList.remove("low", "mid", "high");
-  const tier = clamped > 85 ? "high" : clamped >= 60 ? "mid" : "low";
-  fillCircleEl.classList.add(tier);
-  cardEl.classList.add(tier);
 }
 
 function setPercentText(el, value, suffix = "%") {
@@ -75,7 +69,7 @@ function lerp(a, b, t) {
 }
 
 function applyMetricDisplay(metric, valueEl, cardEl, fillEl) {
-  setGauge(cardEl, fillEl, metrics[metric].display);
+  setGauge(fillEl, metrics[metric].display);
   setPercentText(valueEl, metrics[metric].display);
 }
 
@@ -127,9 +121,9 @@ function makeChart(canvasId, color) {
   });
 }
 
-const cpuChart  = makeChart("cpu-chart",  "#38bdf8");
+const cpuChart  = makeChart("cpu-chart",  "#7dd3fc");
 const ramChart  = makeChart("ram-chart",  "#a78bfa");
-const diskChart = makeChart("disk-chart", "#34d399");
+const diskChart = makeChart("disk-chart", "#4ade80");
 
 function pushSample(chart, value) {
   const data = chart.data.datasets[0].data;
