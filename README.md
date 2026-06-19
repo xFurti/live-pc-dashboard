@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 ![Live PC Health Dashboard](docs/images/hero-banner.png)
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 🖥️ Preview
+## ðŸ–¥ï¸ Preview
 
 <div align="center">
 
@@ -27,22 +27,22 @@
 
 ---
 
-## ✨ Why Live PC Health
+## âœ¨ Why Live PC Health
 
 | Feature | Description |
 |---------|-------------|
-| ⚡ **Real-Time Streaming** | 1-second interval updates powered by FastAPI WebSockets. |
-| 🎛️ **SVG Radial Gauges** | Custom-built speedometer arcs for CPU, Memory, and Disk utilization. |
-| 📈 **Live Sparklines** | Rolling-window line charts via `Chart.js` for historical trend visualization. |
-| 🔥 **Top Processes** | Dynamic tables of the top CPU and RAM consumers, with inline neon progress bars. |
-| 🔄 **Auto-Reconnect** | Seamless frontend reconnection logic if the backend server restarts. |
-| 🌐 **Cross-Platform** | Built on `psutil`, supporting Windows, macOS, and Linux out of the box. |
+| âš¡ **Real-Time Streaming** | 1-second interval updates powered by FastAPI WebSockets. |
+| ðŸŽ›ï¸ **SVG Radial Gauges** | Custom-built speedometer arcs for CPU, Memory, and Disk utilization. |
+| ðŸ“ˆ **Live Sparklines** | Rolling-window line charts via `Chart.js` for historical trend visualization. |
+| ðŸ”¥ **Top Processes** | Dynamic tables of the top CPU and RAM consumers, with inline neon progress bars. |
+| ðŸ”„ **Auto-Reconnect** | Seamless frontend reconnection logic if the backend server restarts. |
+| ðŸŒ **Cross-Platform** | Built on `psutil`, supporting Windows, macOS, and Linux out of the box. |
 
 The interface adopts a premium **"Mission Control"** aesthetic: an animated gradient mesh background, glassmorphism panels, and neon threshold colors that shift from **green** to **amber** to **red** as utilization climbs.
 
 ---
 
-## 🏗️ Architecture
+## ðŸ—ï¸ Architecture
 
 The project is split into a Python data-gathering backend and a static HTML/JS frontend, connected by a live WebSocket stream.
 
@@ -57,26 +57,30 @@ The project is split into a Python data-gathering backend and a static HTML/JS f
 
 ---
 
-## 📂 Project Structure
+## ðŸ“‚ Project Structure
 
 ```text
 live-pc-dashboard/
-├── backend/
-│   ├── stats.py          # psutil metrics reader (CPU, RAM, Disk, Processes)
-│   └── main.py           # FastAPI app + WebSocket endpoint + static file server
-├── frontend/
-│   ├── index.html        # Dashboard layout and SVG gauges
-│   ├── style.css         # Dark theme, glassmorphism, and animations
-│   └── app.js            # WebSocket client, Chart.js logic, and DOM updates
-├── docs/                 # Documentation assets
-├── requirements.txt      # Python dependencies
-└── README.md             # This file
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ stats.py          # psutil metrics reader (CPU, RAM, Disk, Processes)
+â”‚   â””â”€â”€ main.py           # FastAPI app + WebSocket endpoint + static file server
+â”œâ”€â”€ frontend/
+â”‚   â”œâ”€â”€ index.html        # Dashboard layout and SVG gauges
+â”‚   â”œâ”€â”€ style.css         # Dark theme, glassmorphism, and animations
+â”‚   â””â”€â”€ app.js            # WebSocket client, Chart.js logic, and DOM updates
+â”œâ”€â”€ docs/                 # Documentation assets
+â”œâ”€â”€ requirements.txt      # Python dependencies
+â””â”€â”€ README.md             # This file
 ```
 
 ---
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
+
+### Quick start
+
+From the project root, run **start.bat** or **.\start.ps1** on Windows, or **./start.sh** on macOS/Linux (`chmod +x start.sh` once if needed). The script creates `venv`, installs dependencies, and starts the server at **http://127.0.0.1:8000**.
 ### 1. Prerequisites
 
 Ensure you have **Python 3.10+** installed on your system.
@@ -120,11 +124,11 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 ### 5. Launch 
 
-Open your browser and navigate to 👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+Open your browser and navigate to ðŸ‘‰ **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
 
 ---
 
-## 🛠️ Tech Stack
+## ðŸ› ï¸ Tech Stack
 
 - **Backend:** [Python](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [psutil](https://psutil.readthedocs.io/en/latest/)
 - **Server:** [Uvicorn](https://www.uvicorn.org/) (ASGI)
@@ -132,15 +136,15 @@ Open your browser and navigate to 👉 **[http://127.0.0.1:8000](http://127.0.0.
 - **Charting:** [Chart.js](https://www.chartjs.org/)
 ---
 
-## 📄 License
+## ðŸ“„ License
 
 This project is open-source and available under the **MIT License**.
 
-## 🌱 A Note from the Author
+## ðŸŒ± A Note from the Author
 
 This is one of my **first projects**. I'm still learning, so the code
 may not always follow best practices.
 
 If you spot a bug, a mistake, or something that could be done better, please
-**open an issue** or leave a comment — any feedback is genuinely appreciated
-and helps me grow as a developer. Thank you for checking it out! 🙏
+**open an issue** or leave a comment â€” any feedback is genuinely appreciated
+and helps me grow as a developer. Thank you for checking it out! ðŸ™
