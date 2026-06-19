@@ -176,6 +176,63 @@ main {
   align-self: flex-start;
 }
 
+.card-header-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-self: stretch;
+}
+
+.disk-select {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  background-color: rgba(12, 18, 30, 0.72);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2334d399' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 0.65rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.4rem 1.75rem 0.4rem 0.65rem;
+  max-width: 9.5rem;
+  cursor: pointer;
+  color-scheme: dark;
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+.disk-select:hover {
+  border-color: rgba(52, 211, 153, 0.35);
+  background-color: rgba(16, 24, 38, 0.88);
+}
+.disk-select:focus,
+.disk-select:focus-visible {
+  outline: none;
+  border-color: rgba(52, 211, 153, 0.55);
+  box-shadow:
+    0 0 0 2px rgba(52, 211, 153, 0.18),
+    0 0 16px rgba(52, 211, 153, 0.12);
+}
+.disk-select option {
+  background: #141a28;
+  color: var(--text);
+}
+
 /* ── The gauge + centered readout ─────────────────────────────────────────── */
 .gauge-wrap {
   position: relative;
@@ -197,8 +254,8 @@ main {
   stroke-width: 9;
   stroke-linecap: round;
   /* stroke-dasharray + dashoffset are set by JS (setGauge).
-     These CSS transitions make the needle sweep smoothly. */
-  transition: stroke-dashoffset 0.5s ease, stroke 0.4s ease;
+     Short transition as fallback; primary smoothness comes from rAF lerp. */
+  transition: stroke-dashoffset 0.12s linear, stroke 0.3s ease;
   filter: drop-shadow(0 0 6px currentColor);  /* neon glow on the arc */
 }
 .gauge-fill.mid  { stroke: var(--mid); }
@@ -254,6 +311,7 @@ main {
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
 }
+
 .panel-h3 {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.75rem;
@@ -299,7 +357,7 @@ main {
   background: linear-gradient(90deg, rgba(56, 189, 248, 0.28), rgba(56, 189, 248, 0.04));
   border-right: 1px solid rgba(56, 189, 248, 0.4);
   z-index: 0;
-  transition: width 0.5s ease;
+  transition: width 0.35s ease;
 }
 .proc-name-cell span { position: relative; z-index: 1; }
 

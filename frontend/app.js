@@ -3,21 +3,17 @@
    ────────────────────────────────────────────────────────────────────────────
    Responsibilities:
      1. Open a WebSocket to the backend's /ws endpoint.
-     2. On each sample: animate the gauge arcs, the % numbers, the sparklines,
-        and the two live process tables (with neon bars).
-     3. Handle connection state (status badge + auto-reconnect).
-
-   New concepts vs. the old version:
-     - SVG radial gauges via stroke-dasharray / stroke-dashoffset (setGauge)
-     - Smooth count-up number animation (animateNumber)
-     - Threshold color classes (.low / .mid / .high) applied to gauges + numbers
-     - Neon inline bars in the process table (renderProcessTable)
+     2. On each sample: target gauges/sparklines; rAF loop smooths display ~60fps.
+     3. Process tables update on full ticks only (max ~1/s), with row diffing.
+     4. Handle connection state (status badge + auto-reconnect).
    ════════════════════════════════════════════════════════════════════════════ */
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const MAX_POINTS = 30; // sparkline rolling-window size
+const MAX_POINTS = 30;
+const LERP_FACTOR = 0.18; // display lerp per frame toward server target
+const PROCESS_TABLE_MIN_MS = 1000;
 
-// ── DOM references (all 11 load-bearing IDs preserved) ──────────────────────
+// ── DOM references ──────────────────────────────────────────────────────────
 const statusEl     = document.getElementById("status");
 const cpuValueEl   = document.getElementById("cpu-value");
 const ramValueEl   = document.getElementById("ram-value");
@@ -25,10 +21,16 @@ const ramDetailEl  = document.getElementById("ram-detail");
 const diskValueEl  = document.getElementById("disk-value");
 const diskDetailEl = document.getElementById("disk-detail");
 const lastUpdateEl = document.getElementById("last-update");
-const topCpuEl     = document.getElementById("top-cpu-table");
-const topMemEl     = document.getElementById("top-memory-table");
+const topCpuEl          = document.getElementById("top-cpu-table");
+const topMemEl          = document.getElementById("top-memory-table");
+const diskSelectEl      = document.getElementById("disk-select");
 
-// ── Gauge elements: one .gauge-fill circle per card, found via data-metric ──
+const DISK_STORAGE_KEY = "selectedDiskMount";
+let knownDiskMountsKey = "";
+let lastProcessTableRender = 0;
+let latestDisks = [];
+
+// ── Gauge elements ──────────────────────────────────────────────────────────
 const cpuCard  = document.querySelector('.card[data-metric="cpu"]');
 const ramCard  = document.querySelector('.card[data-metric="ram"]');
 const diskCard = document.querySelector('.card[data-metric="disk"]');
@@ -36,50 +38,27 @@ const cpuGaugeFill  = cpuCard.querySelector(".gauge-fill");
 const ramGaugeFill  = ramCard.querySelector(".gauge-fill");
 const diskGaugeFill = diskCard.querySelector(".gauge-fill");
 
-// ════════════════════════════════════════════════════════════════════════════
-// SVG RADIAL GAUGE — the core "Mission Control" trick
-// ════════════════════════════════════════════════════════════════════════════
-//
-// A circle's stroke is drawn along its perimeter. We can render only PART of
-// that perimeter using two SVG attributes:
-//
-//   stroke-dasharray  = "dashLength gapLength"  → pattern of visible/invisible
-//   stroke-dashoffset = N                       → where to start the pattern
-//
-// Our gauge is a 270° arc (speedometer), i.e. 75% of a full circle.
-//   circle r = 52  →  full circumference C = 2 * π * 52 ≈ 326.726
-//   arc length L = C * 0.75 ≈ 245.04
-//
-// We set dasharray = "L C" so only the first 270° is ever visible, then use
-// dashoffset to "reveal" a fraction of that arc proportional to the % value:
-//   0%   → offset = L   (the whole arc is pushed into the gap = nothing shown)
-//   100% → offset = 0   (the whole arc is shown)
-//   in between → offset = L * (1 - percent/100)
-//
-// The <svg> is rotated 135° in CSS so the missing 90° wedge sits at the bottom,
-// giving the classic gauge look. The CSS `transition: stroke-dashoffset` makes
-// the needle sweep smoothly between ticks.
 const GAUGE_R = 52;
-const GAUGE_C = 2 * Math.PI * GAUGE_R;     // full circumference ≈ 326.726
-const GAUGE_ARC = GAUGE_C * 0.75;          // 270° arc length  ≈ 245.04
+const GAUGE_C = 2 * Math.PI * GAUGE_R;
+const GAUGE_ARC = GAUGE_C * 0.75;
 
-// Initialise every gauge to an empty 270° track.
 [cpuGaugeFill, ramGaugeFill, diskGaugeFill].forEach((el) => {
   el.setAttribute("stroke-dasharray", `${GAUGE_ARC} ${GAUGE_C}`);
-  el.setAttribute("stroke-dashoffset", GAUGE_ARC); // start empty
+  el.setAttribute("stroke-dashoffset", GAUGE_ARC);
 });
 
-/**
- * Set a gauge's fill arc to the given percentage (0–100) and apply the
- * threshold color class (.low / .mid / .high) to both the arc and its card.
- */
+// Server targets vs smoothly displayed values (updated every rAF).
+const metrics = {
+  cpu:  { display: 0, target: 0 },
+  ram:  { display: 0, target: 0 },
+  disk: { display: 0, target: 0 },
+};
+
 function setGauge(cardEl, fillCircleEl, percent) {
   const clamped = Math.max(0, Math.min(100, percent));
-  // Reveal a fraction of the 270° arc.
   const offset = GAUGE_ARC * (1 - clamped / 100);
   fillCircleEl.setAttribute("stroke-dashoffset", offset);
 
-  // Threshold colors on both the arc (via the circle) and the number (via the card).
   fillCircleEl.classList.remove("low", "mid", "high");
   cardEl.classList.remove("low", "mid", "high");
   const tier = clamped > 85 ? "high" : clamped >= 60 ? "mid" : "low";
@@ -87,43 +66,39 @@ function setGauge(cardEl, fillCircleEl, percent) {
   cardEl.classList.add(tier);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// SMOOTH NUMBER ANIMATION
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Instead of snapping the % to the new value each tick, we interpolate from
-// the previously displayed value to the new one over ~400ms using
-// requestAnimationFrame. Each element remembers its current value on a
-// private property so successive ticks chain smoothly.
-function animateNumber(el, target, suffix = "%") {
-  const start = el._currentValue ?? 0;
-  if (Math.abs(target - start) < 0.05) {
-    // No meaningful change — just write the value and bail out.
-    el._currentValue = target;
-    el.textContent = `${target.toFixed(1)}${suffix}`;
-    return;
-  }
-  const duration = 400;
-  const startTime = performance.now();
-
-  function step(now) {
-    const t = Math.min(1, (now - startTime) / duration);
-    // easeOutCubic — decelerates nicely.
-    const eased = 1 - Math.pow(1 - t, 3);
-    const value = start + (target - start) * eased;
-    el.textContent = `${value.toFixed(1)}${suffix}`;
-    if (t < 1) {
-      requestAnimationFrame(step);
-    } else {
-      el._currentValue = target; // remember for the next tick
-    }
-  }
-  requestAnimationFrame(step);
+function setPercentText(el, value, suffix = "%") {
+  el.textContent = `${value.toFixed(1)}${suffix}`;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// SPARKLINES (Chart.js, restyled thin + subtle)
-// ════════════════════════════════════════════════════════════════════════════
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function applyMetricDisplay(metric, valueEl, cardEl, fillEl) {
+  setGauge(cardEl, fillEl, metrics[metric].display);
+  setPercentText(valueEl, metrics[metric].display);
+}
+
+function startDisplayLoop() {
+  function frame() {
+    for (const key of ["cpu", "ram", "disk"]) {
+      const m = metrics[key];
+      const delta = m.target - m.display;
+      if (Math.abs(delta) < 0.03) {
+        m.display = m.target;
+      } else {
+        m.display = lerp(m.display, m.target, LERP_FACTOR);
+      }
+    }
+    applyMetricDisplay("cpu", cpuValueEl, cpuCard, cpuGaugeFill);
+    applyMetricDisplay("ram", ramValueEl, ramCard, ramGaugeFill);
+    applyMetricDisplay("disk", diskValueEl, diskCard, diskGaugeFill);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Sparklines ────────────────────────────────────────────────────────────────
 function makeChart(canvasId, color) {
   const ctx = document.getElementById(canvasId).getContext("2d");
   return new Chart(ctx, {
@@ -133,7 +108,7 @@ function makeChart(canvasId, color) {
       datasets: [{
         data: Array(MAX_POINTS).fill(null),
         borderColor: color,
-        backgroundColor: color + "22",   // very faint fill under the line
+        backgroundColor: color + "22",
         fill: true,
         tension: 0.4,
         pointRadius: 0,
@@ -144,7 +119,7 @@ function makeChart(canvasId, color) {
       responsive: true,
       animation: false,
       scales: {
-        y: { min: 0, max: 100, display: false },  // hide axis for a clean sparkline
+        y: { min: 0, max: 100, display: false },
         x: { display: false },
       },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -152,12 +127,10 @@ function makeChart(canvasId, color) {
   });
 }
 
-// New palette matches the CSS per-metric variables.
-const cpuChart  = makeChart("cpu-chart",  "#38bdf8"); // cyan
-const ramChart  = makeChart("ram-chart",  "#a78bfa"); // violet
-const diskChart = makeChart("disk-chart", "#34d399"); // emerald
+const cpuChart  = makeChart("cpu-chart",  "#38bdf8");
+const ramChart  = makeChart("ram-chart",  "#a78bfa");
+const diskChart = makeChart("disk-chart", "#34d399");
 
-// Push a sample, drop the oldest — unchanged rolling-window logic.
 function pushSample(chart, value) {
   const data = chart.data.datasets[0].data;
   data.push(value);
@@ -165,46 +138,152 @@ function pushSample(chart, value) {
   chart.update("none");
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// PROCESS TABLES — live rebuild with neon inline bars
-// ════════════════════════════════════════════════════════════════════════════
-//
-// `barField` tells us which value drives the bar width:
-//   "cpu_percent"    for the Top-by-CPU table
-//   "memory_percent" for the Top-by-RAM  table
-// The bar is an absolutely-positioned div behind the name text (see CSS).
-function renderProcessTable(tableBodyEl, rows, barField) {
-  const html = rows.map((r) => {
-    const barWidth = Math.max(2, Math.min(100, r[barField])); // clamp 2–100%
-    return `
-      <tr>
-        <td>${r.pid}</td>
-        <td class="proc-name-cell">
-          <div class="proc-bar" style="width:${barWidth}%"></div>
-          <span>${escapeHtml(r.name)}</span>
-        </td>
-        <td class="num big-num">${r.cpu_percent.toFixed(1)}</td>
-        <td class="num">${r.memory_percent.toFixed(1)}</td>
-      </tr>`;
-  }).join("");
-  tableBodyEl.innerHTML = html;
-}
-
-// Guard against odd characters in process names (e.g. <, >, &).
+// ── Process tables — row diff, throttled ────────────────────────────────────
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 }
 
-// ── Helper: short HH:MM:SS timestamp ────────────────────────────────────────
+function updateProcessRow(tr, row, barField) {
+  const barWidth = Math.max(2, Math.min(100, row[barField]));
+  let cells = tr.children;
+  if (!cells.length) {
+    tr.innerHTML = `
+      <td></td>
+      <td class="proc-name-cell">
+        <div class="proc-bar"></div>
+        <span></span>
+      </td>
+      <td class="num big-num"></td>
+      <td class="num"></td>`;
+    cells = tr.children;
+  }
+  cells[0].textContent = row.pid;
+  cells[1].querySelector(".proc-bar").style.width = `${barWidth}%`;
+  cells[1].querySelector("span").textContent = row.name;
+  cells[2].textContent = row.cpu_percent.toFixed(1);
+  cells[3].textContent = `${row.memory_mib.toFixed(0)} MiB (${row.memory_percent.toFixed(1)}%)`;
+}
+
+function renderProcessTable(tableBodyEl, rows, barField) {
+  const existing = Array.from(tableBodyEl.children);
+
+  rows.forEach((row, i) => {
+    let tr = existing[i];
+    if (!tr) {
+      tr = document.createElement("tr");
+      tableBodyEl.appendChild(tr);
+    }
+    updateProcessRow(tr, row, barField);
+  });
+
+  while (tableBodyEl.children.length > rows.length) {
+    tableBodyEl.removeChild(tableBodyEl.lastChild);
+  }
+}
+
+function maybeRenderProcessTables(d) {
+  const isFull = d.tick === "full";
+  const now = performance.now();
+  if (!isFull && now - lastProcessTableRender < PROCESS_TABLE_MIN_MS) {
+    return;
+  }
+  lastProcessTableRender = now;
+  renderProcessTable(topCpuEl, d.top_cpu || [], "cpu_percent");
+  renderProcessTable(topMemEl, d.top_memory || [], "memory_percent");
+}
+
+function escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function defaultDiskMount(disks) {
+  const system = disks.find(
+    (d) => d.mountpoint === "C:\\" || d.mountpoint === "/"
+  );
+  return system ? system.mountpoint : disks[0]?.mountpoint;
+}
+
+function syncDiskSelect(disks) {
+  if (!diskSelectEl || !disks?.length) return;
+
+  const mountsKey = disks.map((d) => d.mountpoint).join("|");
+  if (mountsKey !== knownDiskMountsKey) {
+    knownDiskMountsKey = mountsKey;
+    const saved = localStorage.getItem(DISK_STORAGE_KEY);
+    diskSelectEl.innerHTML = disks
+      .map(
+        (d) =>
+          `<option value="${escapeAttr(d.mountpoint)}">${escapeHtml(d.label)}</option>`
+      )
+      .join("");
+    const pick =
+      saved && disks.some((d) => d.mountpoint === saved)
+        ? saved
+        : defaultDiskMount(disks);
+    if (pick) diskSelectEl.value = pick;
+  }
+}
+
+function getSelectedDisk(disks) {
+  if (!disks?.length) return null;
+  const mount = diskSelectEl?.value || localStorage.getItem(DISK_STORAGE_KEY);
+  return disks.find((d) => d.mountpoint === mount) || disks[0];
+}
+
+function updateDiskFromPayload(d) {
+  if (d.disks?.length) {
+    latestDisks = d.disks;
+    syncDiskSelect(d.disks);
+    const disk = getSelectedDisk(d.disks);
+    if (!disk) return;
+    metrics.disk.target = disk.percent;
+    diskDetailEl.textContent = `${disk.used_gib} / ${disk.total_gib} GiB`;
+    pushSample(diskChart, disk.percent);
+    return;
+  }
+
+  metrics.disk.target = d.disk_percent;
+  diskDetailEl.textContent = `${d.disk_used_gib} / ${d.disk_total_gib} GiB`;
+  pushSample(diskChart, d.disk_percent);
+}
+
+if (diskSelectEl) {
+  diskSelectEl.addEventListener("change", () => {
+    localStorage.setItem(DISK_STORAGE_KEY, diskSelectEl.value);
+    if (latestDisks.length) {
+      const disk = getSelectedDisk(latestDisks);
+      if (disk) {
+        metrics.disk.target = disk.percent;
+        diskDetailEl.textContent = `${disk.used_gib} / ${disk.total_gib} GiB`;
+        pushSample(diskChart, disk.percent);
+      }
+    }
+  });
+}
+
 function clockNow() {
   return new Date().toLocaleTimeString();
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// WEBSOCKET CONNECTION (unchanged reconnect logic, new render calls)
-// ════════════════════════════════════════════════════════════════════════════
+function handleMetricsMessage(d) {
+  metrics.cpu.target = d.cpu_percent;
+  metrics.ram.target = d.ram_percent;
+  ramDetailEl.textContent = `${d.ram_used_gib} / ${d.ram_total_gib} GiB`;
+
+  pushSample(cpuChart, d.cpu_percent);
+  pushSample(ramChart, d.ram_percent);
+  updateDiskFromPayload(d);
+
+  maybeRenderProcessTables(d);
+  lastUpdateEl.textContent = clockNow();
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
 function connect() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${protocol}//${location.host}/ws`);
@@ -215,40 +294,17 @@ function connect() {
   };
 
   ws.onmessage = (event) => {
-    const d = JSON.parse(event.data);
-
-    // Gauges + animated numbers.
-    setGauge(cpuCard,  cpuGaugeFill,  d.cpu_percent);
-    setGauge(ramCard,  ramGaugeFill,  d.ram_percent);
-    setGauge(diskCard, diskGaugeFill, d.disk_percent);
-    animateNumber(cpuValueEl,   d.cpu_percent);
-    animateNumber(ramValueEl,   d.ram_percent);
-    animateNumber(diskValueEl,  d.disk_percent);
-
-    // Sub-readouts (used / total).
-    ramDetailEl.textContent  = `${d.ram_used_gb} / ${d.ram_total_gb} GB`;
-    diskDetailEl.textContent = `${d.disk_used_gb} / ${d.disk_total_gb} GB`;
-
-    // Sparklines.
-    pushSample(cpuChart,  d.cpu_percent);
-    pushSample(ramChart,  d.ram_percent);
-    pushSample(diskChart, d.disk_percent);
-
-    // Process tables — each table's bar is driven by its own sort field.
-    renderProcessTable(topCpuEl, d.top_cpu || [],    "cpu_percent");
-    renderProcessTable(topMemEl, d.top_memory || [], "memory_percent");
-
-    lastUpdateEl.textContent = clockNow();
+    handleMetricsMessage(JSON.parse(event.data));
   };
 
   ws.onclose = () => {
     statusEl.textContent = "● Disconnected";
     statusEl.className = "status disconnected";
-    setTimeout(connect, 2000); // auto-reconnect
+    setTimeout(connect, 2000);
   };
 
-  ws.onerror = () => ws.close(); // onclose handles the reconnect
+  ws.onerror = () => ws.close();
 }
 
-// Kick things off.
+startDisplayLoop();
 connect();

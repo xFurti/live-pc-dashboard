@@ -53,7 +53,7 @@
         </svg>
         <div class="gauge-readout">
           <div class="big-value" id="ram-value">--%</div>
-          <div class="sub-value" id="ram-detail">-- / -- GB</div>
+          <div class="sub-value" id="ram-detail">-- / -- GiB</div>
         </div>
       </div>
       <canvas id="ram-chart" class="sparkline"></canvas>
@@ -61,7 +61,10 @@
 
     <!-- ─── Disk gauge card ──────────────────────────────────────── -->
     <section class="card glass" data-metric="disk">
-      <h2 class="card-label">DISK</h2>
+      <div class="card-header-row">
+        <h2 class="card-label">DISK</h2>
+        <select id="disk-select" class="disk-select" aria-label="Select disk"></select>
+      </div>
       <div class="gauge-wrap">
         <svg class="gauge" viewBox="0 0 120 120">
           <circle class="gauge-bg"  cx="60" cy="60" r="52" />
@@ -69,7 +72,7 @@
         </svg>
         <div class="gauge-readout">
           <div class="big-value" id="disk-value">--%</div>
-          <div class="sub-value" id="disk-detail">-- / -- GB</div>
+          <div class="sub-value" id="disk-detail">-- / -- GiB</div>
         </div>
       </div>
       <canvas id="disk-chart" class="sparkline"></canvas>
@@ -81,7 +84,7 @@
         <h3 class="panel-h3">🔥 Top by CPU</h3>
         <table class="process-table">
           <thead>
-            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM%</th></tr>
+            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM</th></tr>
           </thead>
           <tbody id="top-cpu-table"><!-- rows injected by app.js --></tbody>
         </table>
@@ -91,7 +94,7 @@
         <h3 class="panel-h3">💾 Top by RAM</h3>
         <table class="process-table">
           <thead>
-            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM%</th></tr>
+            <tr><th>PID</th><th>Name</th><th class="num">CPU%</th><th class="num">RAM</th></tr>
           </thead>
           <tbody id="top-memory-table"><!-- rows injected by app.js --></tbody>
         </table>
