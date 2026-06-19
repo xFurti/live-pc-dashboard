@@ -1,6 +1,11 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# Re-exec with bash if invoked via sh (e.g. broken shebang or ./start.sh without +x).
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
 
 find_python() {
   for cmd in python3 python; do
@@ -24,7 +29,7 @@ if [ ! -x "venv/bin/python" ]; then
 fi
 
 # shellcheck source=/dev/null
-source "venv/bin/activate"
+. "venv/bin/activate"
 
 pip install -r requirements.txt
 
